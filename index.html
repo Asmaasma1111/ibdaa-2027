@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0F5C56">
+  <title>موضوعات إبداع ٢٠٢٧</title>
+  <meta name="description" content="صفحة خاصة بطالبات مدرسة محمد بن إبراهيم الخضير الثانوية للموهوبات لمعرفة موضوع «إبداع» ٢٠٢٧.">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="strip" aria-hidden="true"><span></span><span></span></div>
+
+  <header class="brand">
+    <div class="brand-row">
+      <img class="emblem" src="assets/emblem.png" alt="شعار مدرسة محمد بن إبراهيم الخضير الثانوية للموهوبين والموهوبات" width="240" height="240">
+      <div class="brand-text">
+        <p class="school">مدرسة محمد بن إبراهيم الخضير الثانوية للموهوبات</p>
+        <p class="place">رياض الخبراء، القصيم</p>
+      </div>
+      <img class="partner" src="assets/logo-interlink.png" alt="معاهد إنترلينك الدولية" width="384" height="125">
+    </div>
+    <div class="size-ctl" role="group" aria-label="حجم الخط">
+      <button type="button" data-size="-1" aria-label="تصغير الخط">أ−</button>
+      <button type="button" data-size="1" aria-label="تكبير الخط">أ+</button>
+    </div>
+  </header>
+
+  <main id="app" tabindex="-1">
+    <p id="live" class="sr-only" aria-live="polite"></p>
+
+    <!-- ═════════ الصفحة الأولى ═════════ -->
+    <section class="view" data-view="home" hidden>
+      <p class="kicker">أولمبياد الموهبة الوطني · المسار البحثي</p>
+      <h1 class="title" tabindex="-1">موضوعك في «إبداع» ٢٠٢٧</h1>
+      <p class="lead">هذه الصفحة تعرض لكل طالبة موضوعها البحثي وحدها. اختاري الطريقة التي تناسبك:</p>
+
+      <div class="choices">
+        <button type="button" class="choice" data-go="lookup">
+          <span class="choice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>
+          </span>
+          <span class="choice-body">
+            <span class="choice-title">أجبتُ عن نموذج الميول</span>
+            <span class="choice-desc">أو اخترتُ موضوعي من قبل. ادخلي برقم جوالك واسمك الأول لتري موضوعك.</span>
+          </span>
+          <span class="chev" aria-hidden="true">‹</span>
+        </button>
+
+        <button type="button" class="choice" data-go="verify" id="choice-round2">
+          <span class="choice-icon gold" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>
+          </span>
+          <span class="choice-body">
+            <span class="choice-title">لم أُجب عن النموذج</span>
+            <span class="choice-desc">اختاري مجالاً يشدّك، ثم موضوعاً من الموضوعات المتبقية. الاختيار نهائي.</span>
+            <span class="badge" id="round2-badge" hidden>غير متاح الآن</span>
+          </span>
+          <span class="chev" aria-hidden="true">‹</span>
+        </button>
+      </div>
+
+      <aside class="note">
+        <strong>انتبهي:</strong> موضوعك لكِ وحدك، فلا تتداوليه مع زميلاتك. لائحة المسابقة تلغي مشاركة الطالبتين إذا اشتركتا في الفكرة نفسها.
+      </aside>
+
+      <!-- عدّلي هذا الشريط أو احذفيه بعد ٣٠ سبتمبر -->
+      <aside class="band">
+        <p class="band-title">التسجيل في موقع موهبة يغلق في ٣٠ سبتمبر ٢٠٢٦</p>
+        <p>المرحلة الأولى تسجيل بياناتك فقط، ولا تحتاج مشروعاً جاهزاً. سجّلي أولاً، ثم ابدئي العمل على موضوعك.</p>
+      </aside>
+    </section>
+
+    <!-- ═════════ الدخول برقم الجوال ═════════ -->
+    <section class="view" data-view="lookup" hidden>
+      <button type="button" class="back" data-go="home">› الرجوع</button>
+      <p class="kicker">أجبتُ عن نموذج الميول</p>
+      <h1 class="title" tabindex="-1">ادخلي برقم جوالك</h1>
+      <form id="form-lookup" class="card form" novalidate>
+        <label for="lk-phone">رقم الجوال</label>
+        <input id="lk-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" dir="ltr"
+               placeholder="05XXXXXXXX" maxlength="16" required>
+        <p class="hint">الرقم الذي كتبتِه في نموذج الميول، أو عند اختيار موضوعك.</p>
+
+        <label for="lk-first">اسمك الأول</label>
+        <input id="lk-first" name="firstName" type="text" autocomplete="given-name" maxlength="30" required>
+
+        <p class="error" role="alert" hidden></p>
+        <button type="submit" class="primary">اعرضي موضوعي</button>
+      </form>
+    </section>
+
+    <!-- ═════════ التحقق من الاسم ═════════ -->
+    <section class="view" data-view="verify" hidden>
+      <button type="button" class="back" data-go="home">› الرجوع</button>
+      <p class="kicker">لم أُجب عن النموذج</p>
+      <h1 class="title" tabindex="-1">عرّفينا بنفسك</h1>
+      <form id="form-verify" class="card form" novalidate>
+        <label for="vf-name">اسمك الثلاثي كما في الهوية</label>
+        <input id="vf-name" name="fullName" type="text" autocomplete="name" maxlength="80"
+               placeholder="اسمك، واسم أبيك، واسم العائلة" required>
+
+        <label for="vf-class">صفك</label>
+        <select id="vf-class" name="cls" required>
+          <option value="">اختاري صفك</option>
+          <option>أول ثانوي 1</option>
+          <option>أول ثانوي 2</option>
+          <option>ثاني ثانوي 1</option>
+          <option>ثاني ثانوي 2</option>
+          <option>ثالث ثانوي 1</option>
+          <option>ثالث ثانوي 2</option>
+        </select>
+
+        <p class="error" role="alert" hidden></p>
+        <button type="submit" class="primary">متابعة</button>
+      </form>
+    </section>
+
+    <!-- ═════════ مجالات الاهتمام ═════════ -->
+    <section class="view" data-view="areas" hidden>
+      <p class="kicker">الخطوة ١ من ٢</p>
+      <h1 class="title" tabindex="-1">أهلاً يا <span data-first></span></h1>
+      <p class="lead">اختاري المجال الذي يشدّك. الرقم يبيّن عدد الموضوعات المتبقية فيه الآن.</p>
+      <p class="flash" hidden></p>
+      <div class="areas" id="areas"></div>
+      <p class="muted small">الجلسة صالحة ثلاثين دقيقة. إن انتهت، ابدئي من جديد باسمك.</p>
+    </section>
+
+    <!-- ═════════ الموضوعات ═════════ -->
+    <section class="view" data-view="topics" hidden>
+      <button type="button" class="back" data-go="areas">› المجالات</button>
+      <p class="kicker">الخطوة ٢ من ٢</p>
+      <h1 class="title" tabindex="-1" id="topics-title"></h1>
+      <p class="lead">اقرئي كل موضوع بتأنٍّ. حين تختارين، يصبح الموضوع لكِ ويختفي من قائمة زميلاتك.</p>
+      <div class="topics" id="topics"></div>
+    </section>
+
+    <!-- ═════════ النتيجة ═════════ -->
+    <section class="view" data-view="result" hidden>
+      <div class="band hello">
+        <p class="band-title" tabindex="-1">موضوعك يا <span data-first></span></p>
+        <p>هذا الموضوع لكِ وحدك. احفظيه، وابدئي بالخطوات الأولى هذا الأسبوع.</p>
+      </div>
+      <article class="sheet" id="sheet"></article>
+      <aside class="note">
+        <strong>تذكّري:</strong> لا تتداولي موضوعك مع زميلاتك، ولا تنشريه في المجموعات. لأي سؤال راجعي منسقة المشروع.
+      </aside>
+      <div class="actions no-print">
+        <button type="button" class="primary" id="btn-print">حفظ كملف PDF أو طباعة</button>
+        <button type="button" class="ghost" id="btn-exit">خروج</button>
+      </div>
+    </section>
+
+    <!-- ═════════ رسالة ═════════ -->
+    <section class="view" data-view="message" hidden>
+      <div class="card message">
+        <span class="msg-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.5v5.5M12 16.2v.3"/></svg>
+        </span>
+        <h1 class="title" tabindex="-1" id="msg-title"></h1>
+        <p id="msg-text"></p>
+        <div class="actions">
+          <button type="button" class="primary" id="msg-action" hidden></button>
+          <button type="button" class="ghost" data-go="home">الصفحة الأولى</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ تأكيد الاختيار ═════════ -->
+    <dialog id="confirm" aria-labelledby="cf-title">
+      <form id="form-claim" method="dialog" novalidate>
+        <p class="kicker">تأكيد نهائي</p>
+        <h2 id="cf-title">هل تختارين هذا الموضوع؟</h2>
+        <p class="cf-topic" id="cf-topic"></p>
+        <p class="warn">الاختيار نهائي. لا يُغيَّر إلا عن طريق منسقة المشروع، وسيختفي الموضوع من قائمة زميلاتك.</p>
+        <label for="cf-phone">رقم جوالك</label>
+        <input id="cf-phone" type="tel" inputmode="numeric" autocomplete="tel" dir="ltr" placeholder="05XXXXXXXX" maxlength="16" required>
+        <p class="hint">ستدخلين به لاحقاً لرؤية موضوعك من الزر الأول.</p>
+        <p class="error" role="alert" hidden></p>
+        <div class="actions">
+          <button type="submit" class="primary" value="confirm">نعم، أختار هذا الموضوع</button>
+          <button type="button" class="ghost" id="cf-cancel">رجوع</button>
+        </div>
+      </form>
+    </dialog>
+
+    <noscript><p class="card">هذه الصفحة تحتاج تفعيل JavaScript في المتصفح.</p></noscript>
+  </main>
+
+  <footer class="foot">
+    <p>مدرسة محمد بن إبراهيم الخضير الثانوية للموهوبات · بالتعاون مع معاهد إنترلينك الدولية</p>
+    <p class="print-only" id="print-stamp"></p>
+  </footer>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
