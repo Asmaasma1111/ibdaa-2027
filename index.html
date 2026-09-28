@@ -32,13 +32,19 @@
     </div>
   </header>
 
+  <div class="stage">
+  <div class="net-rail" id="net-rail">
+    <canvas id="net" aria-hidden="true"></canvas>
+    <span class="net-bubble" id="net-hint" aria-live="polite">المسيني ✨</span>
+  </div>
   <main id="app" tabindex="-1">
     <p id="live" class="sr-only" aria-live="polite"></p>
+    <p class="trial-ribbon no-print" role="status">وضع التجربة للمنسقة: لا يُحجز شيء ولا يُحفظ شيء، ولا يتغير ما تراه أي طالبة.</p>
 
     <!-- ═════════ الصفحة الأولى ═════════ -->
     <section class="view" data-view="home" hidden>
       <p class="kicker">أولمبياد الموهبة الوطني · المسار البحثي</p>
-      <h1 class="title" tabindex="-1">موضوعك في «إبداع» ٢٠٢٧</h1>
+      <h1 class="title" tabindex="-1">موضوعك في «إبداع»&nbsp;٢٠٢٧</h1>
       <p class="lead">هذه الصفحة تعرض لكل طالبة موضوعها البحثي وحدها. اختاري الطريقة التي تناسبك:</p>
 
       <div class="choices">
@@ -88,8 +94,8 @@
                placeholder="05XXXXXXXX" maxlength="16" required>
         <p class="hint">الرقم الذي كتبتِه في نموذج الميول، أو عند اختيار موضوعك.</p>
 
-        <label for="lk-first">اسمك الأول</label>
-        <input id="lk-first" name="firstName" type="text" autocomplete="given-name" maxlength="30" required>
+        <label for="lk-first">اسمك الأول <span class="optional">(اختياري)</span></label>
+        <input id="lk-first" name="firstName" type="text" autocomplete="given-name" maxlength="30">
 
         <p class="error" role="alert" hidden></p>
         <button type="submit" class="primary">اعرضي موضوعي</button>
@@ -118,7 +124,16 @@
         </select>
 
         <p class="error" role="alert" hidden></p>
-        <button type="submit" class="primary">متابعة</button>
+        <div class="suggest" id="vf-suggest" role="alert" hidden>
+          <p>لم نجد الاسم كما كتبتِه، لكن في صفك اسماً قريباً منه:</p>
+          <p class="suggest-name" id="vf-suggest-name"></p>
+          <p>هل هذا اسمك؟</p>
+          <div class="actions">
+            <button type="button" class="primary" id="vf-yes">نعم، هذا اسمي</button>
+            <button type="button" class="ghost" id="vf-no">لا، ليس اسمي</button>
+          </div>
+        </div>
+        <button type="submit" class="primary" id="vf-submit">متابعة</button>
       </form>
     </section>
 
@@ -126,19 +141,32 @@
     <section class="view" data-view="areas" hidden>
       <p class="kicker">الخطوة ١ من ٢</p>
       <h1 class="title" tabindex="-1">أهلاً يا <span data-first></span></h1>
-      <p class="lead">اختاري المجال الذي يشدّك. الرقم يبيّن عدد الموضوعات المتبقية فيه الآن.</p>
+      <p class="lead">اختاري المجال الذي يشدّك، وسنقترح عليكِ موضوعاً منه. الرقم يبيّن عدد الموضوعات المتاحة فيه الآن.</p>
       <p class="flash" hidden></p>
       <div class="areas" id="areas"></div>
       <p class="muted small">الجلسة صالحة ثلاثين دقيقة. إن انتهت، ابدئي من جديد باسمك.</p>
     </section>
 
-    <!-- ═════════ الموضوعات ═════════ -->
-    <section class="view" data-view="topics" hidden>
-      <button type="button" class="back" data-go="areas">› المجالات</button>
-      <p class="kicker">الخطوة ٢ من ٢</p>
-      <h1 class="title" tabindex="-1" id="topics-title"></h1>
-      <p class="lead">اقرئي كل موضوع بتأنٍّ. حين تختارين، يصبح الموضوع لكِ ويختفي من قائمة زميلاتك.</p>
-      <div class="topics" id="topics"></div>
+    <!-- ═════════ الموضوع المقترح ═════════ -->
+    <section class="view" data-view="proposal" hidden>
+      <button type="button" class="back" id="btn-back-areas">› المجالات</button>
+      <p class="kicker" id="pr-kicker">الخطوة ٢ من ٢</p>
+      <h1 class="title" tabindex="-1">موضوع مقترح لكِ</h1>
+      <aside class="note preview-note">
+        <strong>هذه نظرة عامة فقط.</strong> إن شدّكِ الموضوع فعلاً فاقبليه، لتصلكِ كل تفاصيله وخطواتك الأولى.
+        التنقّل بين الموضوعات يشتّتكِ، فاختاري ما يوافق ميولكِ واهتمامكِ.
+      </aside>
+      <p class="flash" hidden></p>
+      <div class="protected" id="proposal-wrap">
+        <article class="sheet proposal" id="proposal"></article>
+        <div class="watermark" id="watermark" aria-hidden="true"></div>
+      </div>
+      <aside class="note" id="pr-hold-note"><strong>محجوز لكِ عشر دقائق.</strong> إن لم تقبليه، يعود متاحاً لزميلاتك.</aside>
+      <div class="actions stack">
+        <button type="button" class="primary" id="btn-accept">نعم، أقبل هذا الموضوع</button>
+        <button type="button" class="ghost" id="btn-decline">لا، اقترحي عليّ موضوعاً آخر</button>
+      </div>
+      <p class="muted small center" id="pr-remaining"></p>
     </section>
 
     <!-- ═════════ النتيجة ═════════ -->
@@ -153,6 +181,7 @@
       </aside>
       <div class="actions no-print">
         <button type="button" class="primary" id="btn-print">حفظ كملف PDF أو طباعة</button>
+        <button type="button" class="ghost trial-only" id="btn-trial-round2">جرّبي الجولة الثانية</button>
         <button type="button" class="ghost" id="btn-exit">خروج</button>
       </div>
     </section>
@@ -176,7 +205,7 @@
     <dialog id="confirm" aria-labelledby="cf-title">
       <form id="form-claim" method="dialog" novalidate>
         <p class="kicker">تأكيد نهائي</p>
-        <h2 id="cf-title">هل تختارين هذا الموضوع؟</h2>
+        <h2 id="cf-title">هل تقبلين هذا الموضوع؟</h2>
         <p class="cf-topic" id="cf-topic"></p>
         <p class="warn">الاختيار نهائي. لا يُغيَّر إلا عن طريق منسقة المشروع، وسيختفي الموضوع من قائمة زميلاتك.</p>
         <label for="cf-phone">رقم جوالك</label>
@@ -184,7 +213,7 @@
         <p class="hint">ستدخلين به لاحقاً لرؤية موضوعك من الزر الأول.</p>
         <p class="error" role="alert" hidden></p>
         <div class="actions">
-          <button type="submit" class="primary" value="confirm">نعم، أختار هذا الموضوع</button>
+          <button type="submit" class="primary" value="confirm">نعم، أقبله نهائياً</button>
           <button type="button" class="ghost" id="cf-cancel">رجوع</button>
         </div>
       </form>
@@ -192,6 +221,9 @@
 
     <noscript><p class="card">هذه الصفحة تحتاج تفعيل JavaScript في المتصفح.</p></noscript>
   </main>
+  </div>
+
+  <p class="print-blocked">لا يمكن طباعة الموضوع المقترح قبل قبوله.</p>
 
   <footer class="foot">
     <p>مدرسة محمد بن إبراهيم الخضير الثانوية للموهوبات · بالتعاون مع معاهد إنترلينك الدولية</p>
@@ -200,5 +232,6 @@
 
   <script src="assets/config.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/net.js"></script>
 </body>
 </html>

@@ -152,7 +152,8 @@ main {
 .choice:hover { border-color: var(--green-l); transform: translateY(-1px); }
 .choice:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .choice:active { transform: translateY(0); }
-.choice[aria-disabled="true"] { opacity: .62; cursor: not-allowed; transform: none; }
+.choice[aria-disabled="true"] { opacity: .78; transform: none; }
+.optional { color: var(--muted); font-weight: 500; font-size: .85em; }
 .choice-icon {
   flex: none; width: 50px; height: 50px; border-radius: 14px;
   background: var(--mint); display: grid; place-items: center;
@@ -360,3 +361,117 @@ dialog h2 { margin: 0 0 6px; color: var(--green); font-size: 1.25rem; font-weigh
   .foot { background: #fff; border-top: 1px solid #ddd; padding: 8px 0 0; }
   .print-only { display: block; margin-top: 2px !important; }
 }
+
+/* ─── الاقتراح ─── */
+.actions.stack { flex-direction: column; }
+.actions.stack .primary, .actions.stack .ghost { flex: none; width: 100%; }
+.center { text-align: center; }
+.proposal .sheet-title { font-size: 1.22rem; }
+
+/* ─── الشرح المبسّط ─── */
+.overview { display: grid; gap: 14px; margin-top: 14px; }
+.ov h3 { margin: 0 0 4px; color: var(--green); font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.ov p { margin: 0; font-size: 1rem; line-height: 1.9; }
+.ov-icon { font-size: 1.1rem; line-height: 1; }
+.journey { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; counter-reset: j; }
+.journey li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+.journey .jn {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--gold-tint); color: var(--gold-d);
+  border: 1.5px solid var(--gold); display: grid; place-items: center; font-weight: 800; font-size: .9rem; margin-top: 2px;
+}
+.journey .jt { font-size: .97rem; }
+.ov.product {
+  background: var(--mint); border: 1.5px solid #BFDAD6; border-radius: 12px; padding: 12px 14px;
+}
+.ov.product p { font-weight: 500; }
+
+details.guide { margin-top: 18px; border-top: 2px dotted var(--gold); padding-top: 10px; }
+details.guide > summary {
+  cursor: pointer; list-style: none; font-weight: 800; color: var(--gold-d); font-size: .95rem;
+  display: flex; align-items: center; gap: 8px; padding: 6px 0;
+}
+details.guide > summary::-webkit-details-marker { display: none; }
+details.guide > summary::before {
+  content: '‹'; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--gold-tint); border: 1px solid var(--gold-pale); transition: transform .2s; font-size: 1.1rem;
+}
+details.guide[open] > summary::before { transform: rotate(-90deg); }
+details.guide > summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+details.guide .sec:first-of-type { margin-top: 6px; }
+
+@media print {
+  details.guide > summary::before { display: none; }
+  .ov.product { border: 1px solid #BFDAD6; }
+}
+
+/* ─── شريط الشبكة العمودي على يسار الصفحة الأولى ─── */
+/* الشريط أعرض قليلاً من المسافة المحجوزة له، ويتلاشى طرفه تحت المحتوى بلا خط فاصل */
+:root { --net-w: 92px; --net-gap: 62px; }
+.stage { position: relative; flex: 1; display: flex; flex-direction: column; }
+.stage > main { flex: 1; position: relative; z-index: 1; }
+.net-rail { position: absolute; left: 0; top: 0; bottom: 0; width: var(--net-w); z-index: 0; display: none; }
+body.is-home .net-rail { display: block; }
+#net {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; touch-action: manipulation;
+  -webkit-mask-image: linear-gradient(to right, #000 58%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 70px, #000 calc(100% - 60px), transparent 100%);
+  -webkit-mask-composite: source-in;
+          mask-image: linear-gradient(to right, #000 58%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 70px, #000 calc(100% - 60px), transparent 100%);
+          mask-composite: intersect;
+}
+.net-bubble {
+  position: absolute; top: 12px; left: 8px; z-index: 3; white-space: nowrap; pointer-events: none;
+  background: var(--gold-tint); color: var(--gold-d); border: 1px solid var(--gold-pale);
+  border-radius: 999px; padding: 2px 10px; font-size: .74rem; font-weight: 800; line-height: 1.7;
+  box-shadow: 0 2px 8px rgba(201, 162, 39, .2); animation: bob 2.2s ease-in-out infinite;
+}
+.net-bubble::after {                                  /* سهم صغير يشير إلى الشبكة تحته */
+  content: ''; position: absolute; left: 16px; bottom: -6px;
+  border: 6px solid transparent; border-bottom: 0; border-top-color: var(--gold-pale);
+}
+.net-bubble.playing { animation: none; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+body.is-home main { padding-left: var(--net-gap); padding-top: 50px; pointer-events: none; }
+body.is-home main > * { pointer-events: auto; }     /* الهامش الفارغ يمرّر اللمس إلى الشبكة */
+.view[data-view="home"] .choice { animation: rise .45s ease-out both; }
+.view[data-view="home"] .choice:nth-child(2) { animation-delay: .12s; }
+.view[data-view="home"] .note { animation: rise .45s ease-out .22s both; }
+.view[data-view="home"] .band { animation: rise .45s ease-out .32s both; }
+.chev { transition: transform .2s; }
+.choice:hover .chev { transform: translateX(-4px); }
+@media (min-width: 560px) { :root { --net-w: 140px; --net-gap: 100px; } }
+@media (min-width: 1000px) { :root { --net-w: 220px; } body.is-home main { padding-left: 16px; } }
+@media (prefers-reduced-motion: reduce) { .net-bubble { animation: none; } }
+@media print { .net-rail { display: none !important; } body.is-home main { padding-left: 0; } }
+
+/* ─── حماية الاقتراح قبل القبول ─── */
+.preview-note { margin-top: 0; }
+.protected { position: relative; }
+.protected, .protected * {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.watermark {
+  position: absolute; inset: 0; pointer-events: none; border-radius: var(--radius);
+  background-repeat: repeat; opacity: .11; z-index: 2;
+}
+.print-blocked { display: none; }
+@media print {
+  body.is-proposal main > *, body.is-proposal .stage > .net-rail { display: none !important; }
+  body.is-proposal .print-blocked { display: block !important; text-align: center; font-size: 14pt; padding: 40mm 10mm; color: #0F5C56; }
+}
+
+/* ─── وضع التجربة للمنسقة ─── */
+.trial-ribbon, .trial-only { display: none !important; }
+body.is-trial .trial-only { display: inline-flex !important; align-items: center; justify-content: center; }
+body.is-trial .trial-ribbon {
+  display: block !important; margin: 0 0 16px; padding: 10px 14px; border-radius: 12px;
+  background: #FBF4E4; border: 1.5px dashed #C9A227; color: #6B5210; font-weight: 700; font-size: .92rem; line-height: 1.6;
+}
+
+/* ─── «هل تقصدين…؟» ─── */
+.suggest {
+  margin-top: 14px; padding: 14px 16px; border-radius: 14px;
+  background: #EAF3F2; border: 1.5px solid rgba(15, 92, 86, .28);
+}
+.suggest p { margin: 0 0 6px; }
+.suggest .suggest-name { font-size: 1.25rem; font-weight: 800; color: #0F5C56; margin: 6px 0 8px; }
+.suggest .actions { margin-top: 10px; }

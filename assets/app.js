@@ -47,7 +47,7 @@
 
   // ─── الرسائل ───
   var INLINE = {
-    lookup_not_found: 'لم نجد طالبة بهذا الرقم وهذا الاسم. تأكدي من الرقم ومن كتابة اسمك الأول، وإن استمرت المشكلة فراجعي منسقة المشروع.',
+    lookup_not_found: 'لم نجد طالبة بهذا الرقم. تأكدي من الرقم، وإن كتبتِ اسمك فتأكدي من كتابته أو اتركيه فارغاً. وإن استمرت المشكلة فراجعي منسقة المشروع.',
     verify_not_found: 'لم نجد اسمك في القائمة. اكتبيه كما في الهوية: اسمك، واسم أبيك، واسم العائلة. وإن استمرت المشكلة فراجعي منسقة المشروع.',
     bad_phone: 'اكتبي رقم جوال صحيحاً يبدأ بـ 05 ويتكوّن من عشرة أرقام.',
     bad_name: 'اكتبي اسمك الأول.',
@@ -74,6 +74,9 @@
   // ─── التنقل بين الصفحات ───
   function show(view, noHistory) {
     $$('.view').forEach(function (v) { v.hidden = v.getAttribute('data-view') !== view; });
+    document.body.classList.toggle('is-home', view === 'home');
+    document.body.classList.toggle('is-proposal', view === 'proposal');
+    try { document.dispatchEvent(new Event('ibdaa:view')); } catch (e) {}
     if (!noHistory) history.pushState({ view: view }, '', view === 'home' ? location.pathname : '#' + view);
     window.scrollTo(0, 0);
     var h = $('.view[data-view="' + view + '"] [tabindex="-1"]');
@@ -82,7 +85,8 @@
 
   window.addEventListener('popstate', function (e) {
     var v = (e.state && e.state.view) || 'home';
-    if ((v === 'areas' || v === 'topics') && !state.token) v = 'home';
+    if ((v === 'areas' || v === 'proposal') && !state.token) v = 'home';
+    if (v === 'areas' && state.pick) { releaseProposal(); }
     if (v === 'result' || v === 'message') v = 'home';
     closeDialog();
     show(v, true);
@@ -103,12 +107,23 @@
   }
 
   function go(view) {
-    if (view === 'verify' && !state.round2Open) return message('closed_round2');
+    // إن بدت الجولة الثانية مغلقة، نسأل الخادم من جديد: ربما فُتحت بعد تحميل الصفحة
+    if (view === 'verify' && !state.round2Open) {
+      document.body.style.cursor = 'progress';
+      return api('status').then(function (res) {
+        if (res && res.ok) { state.round2Open = !!res.round2Open; updateRound2(); }
+      }).catch(function () {}).then(function () {
+        document.body.style.cursor = '';
+        if (state.round2Open) return go('verify');
+        message('closed_round2');
+      });
+    }
     if (view === 'areas') { renderAreas(); }
     // نموذج نظيف في كل دخول، حتى لا تظهر بيانات طالبة سابقة على جوال مشترك
     if (view === 'lookup' || view === 'verify') {
       var f = $(view === 'lookup' ? '#form-lookup' : '#form-verify');
       f.reset(); formError(f, '');
+      if (view === 'verify') hideSuggest();
     }
     show(view);
   }
@@ -168,14 +183,14 @@
     var phone = normPhone(phoneIn.value);
     var first = nameParts(firstIn.value)[0] || '';
     if (!phone) return formError(form, INLINE.bad_phone, phoneIn);
-    if (!first) return formError(form, INLINE.bad_name, firstIn);
     formError(form, '');
     busy(btn, true, 'نبحث عن موضوعك');
     api('lookup', { phone: phone, firstName: first }).then(function (res) {
       busy(btn, false);
       if (res.ok) {
         form.reset();
-        renderResult(res.topic, first);
+        setTrial(!!res.tester, res.token);
+        renderResult(res.topic, res.tester ? res.firstName : (first || res.firstName));
         return show('result');
       }
       switch (res.code) {
@@ -184,7 +199,7 @@
         case 'bad_name': return formError(form, INLINE.bad_name, firstIn);
         case 'too_many': return formError(form, INLINE.too_many);
         case 'closed': return message('closed_lookup');
-        case 'no_topic_yet': return message('no_topic_yet', first);
+        case 'no_topic_yet': return message('no_topic_yet', first || res.firstName);
         default: return formError(form, INLINE.server_error);
       }
     }).catch(function (err) {
@@ -204,22 +219,71 @@
     if (nameParts(name).length < 3) return formError(form, INLINE.name_too_short, nameIn);
     if (!clsIn.value) return formError(form, INLINE.no_class, clsIn);
     formError(form, '');
+    hideSuggest();
     busy(btn, true, 'نتحقق من اسمك');
     api('verify', { fullName: name, cls: clsIn.value }).then(function (res) {
       busy(btn, false);
-      if (res.ok) {
-        state.token = res.token; state.first = typedFirst; state.areas = res.areas || [];
-        form.reset();
-        setFirst(typedFirst);
-        return go('areas');
-      }
+      if (res.ok) return verified(res, typedFirst);
       switch (res.code) {
+        case 'suggest': return showSuggest(res, name);
         case 'not_found': return formError(form, INLINE.verify_not_found, nameIn);
         case 'name_too_short': return formError(form, INLINE.name_too_short, nameIn);
         case 'ambiguous': return formError(form, INLINE.ambiguous, nameIn);
         case 'use_lookup': return message('use_lookup', typedFirst);
         case 'already_has_topic': return message('already_has_topic', typedFirst);
         case 'closed': state.round2Open = false; updateRound2(); return message('closed_round2');
+        default: return formError(form, INLINE.server_error);
+      }
+    }).catch(function (err) {
+      busy(btn, false);
+      if (err.code === 'not_configured') return message('not_configured');
+      formError(form, INLINE.network);
+    });
+  });
+
+  function verified(res, first) {
+    var form = $('#form-verify');
+    setTrial(false);
+    hideSuggest();
+    state.token = res.token; state.first = first; state.areas = res.areas || [];
+    form.reset();
+    setFirst(first);
+    go('areas');
+  }
+
+  // ─── «هل تقصدين…؟»: اسم قريب من صفها نفسه، وتؤكده هي ───
+  var suggestTicket = '', suggestTyped = '';
+  function showSuggest(res, typed) {
+    suggestTicket = res.ticket; suggestTyped = typed;
+    $('#vf-suggest-name').textContent = res.suggestion;
+    $('#vf-suggest').hidden = false;
+    $('#vf-submit').hidden = true;
+    setTimeout(function () { $('#vf-yes').focus(); }, 40);
+  }
+  function hideSuggest() {
+    suggestTicket = '';
+    $('#vf-suggest').hidden = true;
+    $('#vf-submit').hidden = false;
+  }
+  $('#vf-name').addEventListener('input', hideSuggest);
+  $('#vf-class').addEventListener('change', hideSuggest);
+  $('#vf-no').addEventListener('click', function () {
+    hideSuggest();
+    formError($('#form-verify'), INLINE.verify_not_found, $('#vf-name'));
+  });
+  $('#vf-yes').addEventListener('click', function () {
+    if (!suggestTicket) return;
+    var btn = this, form = $('#form-verify');
+    busy(btn, true, 'لحظة');
+    api('confirmName', { ticket: suggestTicket, typed: suggestTyped }).then(function (res) {
+      busy(btn, false);
+      if (res.ok) return verified(res, res.firstName);
+      hideSuggest();
+      switch (res.code) {
+        case 'use_lookup': return message('use_lookup', res.firstName);
+        case 'already_has_topic': return message('already_has_topic', res.firstName);
+        case 'closed': state.round2Open = false; updateRound2(); return message('closed_round2');
+        case 'session_expired': return formError(form, 'انتهت مدة الاقتراح. اضغطي «متابعة» مرة أخرى.');
         default: return formError(form, INLINE.server_error);
       }
     }).catch(function (err) {
@@ -256,24 +320,84 @@
     }).join('');
   }
 
+  // ─── اقتراح موضوع من المجال ───
+  function areaBusy(btn) {
+    $$('.area').forEach(function (x) { x.disabled = true; });
+    btn.querySelector('.area-count').innerHTML = '<span class="spinner" style="border-color:rgba(140,106,15,.3);border-top-color:#8C6A0F"></span>';
+  }
+
   $('#areas').addEventListener('click', function (e) {
     var b = e.target.closest('.area');
     if (!b || b.disabled) return;
     var key = b.getAttribute('data-area');
-    var area = state.areas.filter(function (a) { return a.key === key; })[0];
-    $$('.area').forEach(function (x) { x.disabled = true; });
-    b.querySelector('.area-count').innerHTML = '<span class="spinner" style="border-color:rgba(140,106,15,.3);border-top-color:#8C6A0F"></span>';
-    api('topics', { token: state.token, area: key }).then(function (res) {
-      if (res.ok) {
-        state.area = area; state.topics = res.topics || [];
-        if (!state.topics.length) return refreshAreas('نفدت موضوعات هذا المجال قبل لحظات. اختاري مجالاً آخر.');
-        renderTopics();
-        return show('topics');
-      }
-      handleSessionError(res);
-    }).catch(function () {
+    state.area = state.areas.filter(function (a) { return a.key === key; })[0];
+    areaBusy(b);
+    api('propose', { token: state.token, area: key }).then(handleProposal).catch(function () {
       renderAreas(INLINE.network);
     });
+  });
+
+  function handleProposal(res, flash) {
+    if (res.ok) {
+      state.pick = res.topic;
+      renderProposal(res, typeof flash === 'string' ? flash : '');
+      return show('proposal');
+    }
+    if (res.code === 'no_more_in_area') {
+      state.pick = null;
+      state.areas = res.areas || [];
+      renderAreas('لم يبقَ في هذا المجال موضوع آخر متاح لكِ. اختاري مجالاً آخر.');
+      return show('areas');
+    }
+    handleSessionError(res);
+  }
+
+  function renderProposal(res, flash) {
+    var t = res.topic;
+    $('#pr-kicker').textContent = 'الخطوة ٢ من ٢ · ' + (t.area || (state.area && state.area.label) || '');
+    var f = $('.view[data-view="proposal"] .flash');
+    f.textContent = flash || ''; f.hidden = !flash;
+    $('#proposal').innerHTML = '<header class="sheet-head"><div class="chips">' + chipsHtml(t) + '</div>' +
+      '<h2 class="sheet-title">' + esc(t.title) + '</h2></header>' + overviewHtml(t) +
+      '<p class="muted small">التفاصيل الكاملة وخطواتك الأولى تظهر بعد قبول الموضوع.</p>';
+    setWatermark('مقترح لـ ' + (state.first || '') + ' · غير مُسند');
+    $('#pr-remaining').textContent = res.remaining > 0
+      ? 'في هذا المجال ' + countLabel(res.remaining) + ' غيره إن أردتِ اقتراحاً آخر.'
+      : 'هذا آخر موضوع متاح لكِ في هذا المجال.';
+    $('#btn-decline').textContent = res.remaining > 0 ? 'لا، اقترحي عليّ موضوعاً آخر' : 'لا، أريد مجالاً آخر';
+  }
+
+  // «لا»: يعود الموضوع للجميع، ويُقترح التالي في المجال نفسه
+  $('#btn-decline').addEventListener('click', function () {
+    if (!state.pick) return;
+    var btn = this;
+    busy(btn, true, 'نعيده للقائمة ونبحث عن غيره');
+    $('#btn-accept').disabled = true;
+    api('decline', { token: state.token, topicId: state.pick.id, area: state.area ? state.area.key : '' }).then(function (res) {
+      busy(btn, false); $('#btn-accept').disabled = false;
+      handleProposal(res, 'هذا اقتراح آخر في المجال نفسه.');
+    }).catch(function () {
+      busy(btn, false); $('#btn-accept').disabled = false;
+      var f = $('.view[data-view="proposal"] .flash'); f.textContent = INLINE.network; f.hidden = false;
+    });
+  });
+
+  // «نعم»: تأكيد برقم الجوال
+  $('#btn-accept').addEventListener('click', function () { if (state.pick) openDialog(); });
+
+  // الرجوع إلى المجالات يترك الموضوع دون أن يُحسب رفضاً
+  function releaseProposal() {
+    if (!state.pick || !state.token) return;
+    var id = state.pick.id;
+    state.pick = null;
+    api('decline', { token: state.token, topicId: id, releaseOnly: true }).then(function (res) {
+      if (res.ok && res.areas) { state.areas = res.areas; renderAreas(); }
+    }).catch(function () {});
+  }
+  $('#btn-back-areas').addEventListener('click', function () {
+    releaseProposal();
+    renderAreas();
+    show('areas');
   });
 
   function refreshAreas(flash) {
@@ -286,38 +410,15 @@
   function handleSessionError(res) {
     if (res.code === 'session_expired') { state.token = ''; return message('session_expired'); }
     if (res.code === 'closed') { state.round2Open = false; updateRound2(); return message('closed_round2'); }
+    if (res.code === 'already_has_topic') return message('already_has_topic', state.first);
     renderAreas(INLINE.server_error);
     show('areas');
   }
 
-  // ─── الموضوعات ───
   function reqChip(req) {
     var cls = req.indexOf('مختبر المدرسة') >= 0 ? 'lab' : (req.indexOf('جامعية') >= 0 ? 'uni' : '');
     return '<span class="chip ' + cls + '">' + esc(req) + '</span>';
   }
-
-  function renderTopics() {
-    $('#topics-title').textContent = state.area ? state.area.label : '';
-    $('#topics').innerHTML = state.topics.map(function (t) {
-      return '<article class="topic">' +
-        '<div class="chips"><span class="chip code">' + esc(t.id) + '</span>' + reqChip(t.req) +
-        '<span class="chip">' + weeksLabel(t.weeks) + '</span>' +
-        (t.fast ? '<span class="chip gold">مسار سريع</span>' : '') + '</div>' +
-        '<h2>' + esc(t.title) + '</h2>' +
-        '<p>' + esc(t.what) + '</p>' +
-        '<p class="muted small">مجال موهبة: ' + esc(t.field) + '</p>' +
-        '<button type="button" class="primary" data-pick="' + esc(t.id) + '">أختار هذا الموضوع</button>' +
-        '</article>';
-    }).join('');
-  }
-
-  $('#topics').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-pick]');
-    if (!b) return;
-    var id = b.getAttribute('data-pick');
-    state.pick = state.topics.filter(function (t) { return t.id === id; })[0];
-    openDialog();
-  });
 
   // ─── نافذة التأكيد ───
   var dlg = $('#confirm');
@@ -340,13 +441,14 @@
     if (!phone) return formError(form, INLINE.bad_phone, phoneIn);
     if (!state.pick) return closeDialog();
     formError(form, '');
-    busy(btn, true, 'نسجّل اختيارك');
+    busy(btn, true, 'نسجّل قبولك');
     $('#cf-cancel').disabled = true;
     api('claim', { token: state.token, topicId: state.pick.id, phone: phone }).then(function (res) {
       busy(btn, false); $('#cf-cancel').disabled = false;
       if (res.ok) {
         closeDialog(); form.reset();
-        state.token = '';
+        if (!state.tester) state.token = '';      // جلسة التجربة تبقى لتجربة أخرى
+        state.pick = null;
         renderResult(res.topic, state.first || res.firstName);
         return show('result');
       }
@@ -355,8 +457,9 @@
         case 'phone_taken': return formError(form, INLINE.phone_taken, phoneIn);
         case 'topic_taken':
           closeDialog();
+          state.pick = null;
           state.areas = res.areas || state.areas;
-          renderAreas('سبقتك زميلة إلى هذا الموضوع قبل لحظات. اختاري موضوعاً آخر.');
+          renderAreas('انتهت مدة الحجز، وسبقتك زميلة إلى هذا الموضوع. اختاري مجالاً وسنقترح عليكِ غيره.');
           return show('areas');
         case 'already_has_topic': closeDialog(); return message('already_has_topic', state.first);
         case 'not_found': closeDialog(); return message('not_found_claim');
@@ -371,26 +474,71 @@
   // ─── ورقة الموضوع ───
   function setFirst(first) { $$('[data-first]').forEach(function (s) { s.textContent = first || ''; }); }
 
-  function renderResult(t, first) {
-    state.first = first || '';
-    setFirst(first);
-    var chips = '<span class="chip code">' + esc(t.id) + '</span>' +
+  // ─── حماية الاقتراح: علامة مائية باسمها، ومنع النسخ والطباعة قبل القبول ───
+  function setWatermark(text) {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="260" height="150">' +
+      '<text x="130" y="80" text-anchor="middle" font-family="Tajawal, Tahoma, sans-serif" font-size="17" font-weight="700" ' +
+      'fill="#0F5C56" transform="rotate(-24 130 75)" direction="rtl">' + esc(text) + '</text></svg>';
+    $('#watermark').style.backgroundImage = 'url("data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '")';
+  }
+  function inProposal() { return document.body.classList.contains('is-proposal'); }
+  ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (inProposal() && e.target.closest && e.target.closest('.view[data-view="proposal"]') && !e.target.closest('dialog')) {
+        e.preventDefault();
+      }
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!inProposal() || !(e.ctrlKey || e.metaKey)) return;
+    if (e.target.closest && e.target.closest('input, textarea, dialog')) return;
+    var k = String(e.key || '').toLowerCase();
+    if (k === 'c' || k === 'a' || k === 'p' || k === 's' || k === 'x') e.preventDefault();
+  });
+
+  // ─── بناء ورقة الموضوع: الشرح المبسّط أولاً، ثم تفاصيل الدليل ───
+  function chipsHtml(t) {
+    return '<span class="chip code">' + esc(t.id) + '</span>' +
       '<span class="chip">مجال موهبة: ' + esc(t.field) + '</span>' + reqChip(t.req) +
       '<span class="chip">' + weeksLabel(t.weeks) + '</span>' +
       (t.fast ? '<span class="chip gold">مسار سريع</span>' : '');
-    var secs = [
-      ['ماذا ستنفذين؟', t.what], ['عن ماذا يدور؟', t.why], ['هل فيه تجارب؟', t.exp],
-      ['المتطلبات', t.needs], ['ما يجب تضمينه', t.include], ['مصدر البيانات المفتوح', t.data]
-    ].filter(function (s) { return s[1]; }).map(function (s) {
-      return '<section class="sec"><h3>' + s[0] + '</h3><p>' + esc(s[1]) + '</p></section>';
+  }
+
+  function overviewHtml(t) {
+    if (!t.idea) return '';
+    var how = (t.how || []).map(function (h, i) {
+      return '<li><span class="jn">' + ar(i + 1) + '</span><span class="jt">' + esc(h) + '</span></li>';
     }).join('');
+    return '<div class="overview">' +
+      '<section class="ov"><h3><span class="ov-icon" aria-hidden="true">💡</span>فكرة الموضوع</h3><p>' + esc(t.idea) + '</p></section>' +
+      (t.problem ? '<section class="ov"><h3><span class="ov-icon" aria-hidden="true">❓</span>المشكلة التي يعالجها</h3><p>' + esc(t.problem) + '</p></section>' : '') +
+      (how ? '<section class="ov"><h3><span class="ov-icon" aria-hidden="true">🧭</span>كيف ستعملين</h3><ol class="journey">' + how + '</ol></section>' : '') +
+      (t.product ? '<section class="ov product"><h3><span class="ov-icon" aria-hidden="true">🏆</span>ماذا ستقدّمين في النهاية</h3><p>' + esc(t.product) + '</p></section>' : '') +
+      '</div>';
+  }
+
+  function guideHtml(t, full, open) {
+    var rows = [['ماذا ستنفذين؟', t.what], ['عن ماذا يدور؟', t.why], ['هل فيه تجارب؟', t.exp], ['المتطلبات', t.needs]];
+    if (full) rows.push(['ما يجب تضمينه', t.include], ['مصدر البيانات المفتوح', t.data]);
+    var secs = rows.filter(function (r) { return r[1]; }).map(function (r) {
+      return '<section class="sec"><h3>' + r[0] + '</h3><p>' + esc(r[1]) + '</p></section>';
+    }).join('');
+    if (!t.idea) return secs;                       // لا شرح مبسّط: تُعرض التفاصيل مباشرة كما كانت
+    return '<details class="guide"' + (open ? ' open' : '') + '><summary>التفاصيل كما في دليل المسابقة</summary>' + secs + '</details>';
+  }
+
+  function renderResult(t, first) {
+    state.first = first || '';
+    setFirst(first);
     var steps = (t.steps || []).map(function (s, i) {
       return '<li><span class="n">' + ar(i + 1) + '</span><span class="t">' + esc(s) + '</span></li>';
     }).join('');
     $('#sheet').innerHTML =
-      '<header class="sheet-head"><div class="chips">' + chips + '</div>' +
-      '<h2 class="sheet-title">' + esc(t.title) + '</h2></header>' + secs +
-      (steps ? '<h3 class="steps-title">خطواتك الأولى هذا الأسبوع</h3><ol class="ladder">' + steps + '</ol>' : '');
+      '<header class="sheet-head"><div class="chips">' + chipsHtml(t) + '</div>' +
+      '<h2 class="sheet-title">' + esc(t.title) + '</h2></header>' +
+      overviewHtml(t) +
+      (steps ? '<h3 class="steps-title">خطواتك الأولى هذا الأسبوع</h3><ol class="ladder">' + steps + '</ol>' : '') +
+      guideHtml(t, true, false);
     state.resultTitle = t.title;
   }
 
@@ -403,11 +551,26 @@
     $('#print-stamp').textContent = 'موضوع «إبداع» ٢٠٢٧ للطالبة ' + (state.first || '') + ' · حُفظ في ' + when;
     document.title = 'موضوع إبداع ٢٠٢٧ - ' + (state.first || '');
   }
-  window.addEventListener('beforeprint', stampPrint);
+  function openGuideForPrint() { $$('#sheet details.guide').forEach(function (d) { d.open = true; }); }
+  window.addEventListener('beforeprint', function () { stampPrint(); openGuideForPrint(); });
   window.addEventListener('afterprint', function () { document.title = baseTitle; });
-  $('#btn-print').addEventListener('click', function () { stampPrint(); window.print(); });
+  $('#btn-print').addEventListener('click', function () { stampPrint(); openGuideForPrint(); window.print(); });
+
+  // ─── وضع التجربة للمنسقة: رقم وهمي من ورقة الإعدادات، والخادم لا يحفظ فيه شيئاً ───
+  function setTrial(on, token) {
+    state.tester = on;
+    if (on) state.token = token || '';
+    document.body.classList.toggle('is-trial', on);
+  }
+  $('#btn-trial-round2').addEventListener('click', function () {
+    if (!state.tester || !state.token) return;
+    var btn = this;
+    busy(btn, true, 'لحظة');
+    refreshAreas().then(function () { busy(btn, false); });
+  });
 
   $('#btn-exit').addEventListener('click', function () {
+    setTrial(false);
     state = { token: '', first: '', areas: [], area: null, topics: [], pick: null, round2Open: state.round2Open };
     $('#sheet').innerHTML = '';
     setFirst('');
